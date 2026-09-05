@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
+import phonebook from './services/phonebook'
+
 const Filter = ({ filter, filterPerson }) => {
   return (<div>
     filter: <input value={filter} onChange={filterPerson} />
@@ -21,10 +23,11 @@ const PersonForm = ({ addPerson, newName, addNewName, newNumber, addNewNumber })
 
 }
 
-const Persons = ({ persons }) => {
-  return (<div>
-    {persons.map(person => (<div key={person.id}>{person.name} {person.number}</div>))}
-  </div>
+const Person = ({ person, deletePerson }) => {
+  return (
+    <div>
+      {person.name} {person.number} <button onClick={deletePerson}>delete</button>
+    </div >
   )
 }
 
@@ -39,7 +42,7 @@ const App = () => {
   const [filter, setFilter] = useState('')
 
   useEffect(() => {
-    axios.get('http://localhost:3001/persons').then(
+    phonebook.getAll().then(
       response => {
         setPersons(response.data)
         setFiltered(response.data)
@@ -50,14 +53,38 @@ const App = () => {
   const addPerson = (event) => {
     event.preventDefault()
     const newB = { name: newName, number: newNumber, id: persons.length + 1 }
-
-    if (persons.filter(x => x.name === newB.name).length === 0) {
-      setPersons([...persons, newB])
-      setFiltered([...filtered, newB])
-      setNewName('')
-      setNewNumber('')
+    const find = persons.find(person => person.name === newName)
+    if (find !== '') {
+      if (window.confirm(`Replace ${find.name}?`)) {
+        const newB = { name: newName, number: newNumber, id: find.id }
+        phonebook.update(newB, find.id).then(response => {
+          setPersons(persons.map(person => person.id === find.id ? response.data : person))
+          setFiltered(filtered.map(person => person.id === find.id ? response.data : person))
+          setNewName('')
+          setNewNumber('')
+        })
+      }
     } else {
-      alert(`${newB.name} is already added to phonebook`)
+      phonebook.create(newB).then(response => {
+        setPersons([...persons, response.data])
+        setFiltered([...filtered, response.data])
+        setNewName('')
+        setNewNumber('')
+      }
+      )
+    }
+  }
+
+  const deletePerson = (id) => {
+    const person = persons.find(person => person.id === id)
+    if (window.confirm(`Delete ${person.name}?`)) {
+      phonebook.deletePerson(id).then(
+        response => {
+          setPersons(persons.filter(person => person.id !== id))
+          setFiltered(filtered.filter(person => person.id !== id))
+
+        }
+      )
     }
   }
 
@@ -81,7 +108,9 @@ const App = () => {
       <h3>add a new</h3>
       <PersonForm addPerson={addPerson} newName={newName} addNewName={addNewName} newNumber={newNumber} addNewNumber={addNewNumber}></PersonForm>
       <h2>Numbers</h2>
-      <Persons persons={filtered}></Persons>
+      {filtered.map(person =>
+        <Person key={person.id} person={person} deletePerson={() => deletePerson(person.id)}></Person>
+      )}
     </div>
   )
 }

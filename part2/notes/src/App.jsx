@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import Note from './components/Note'
 import axios from 'axios'
+import noteService from './services/notes'
 
 const App = () => {
   const [notes, setNotes] = useState([])
@@ -9,8 +10,7 @@ const App = () => {
 
   useEffect(() => {
     console.log("effect")
-    axios
-      .get("http://localhost:3001/notes")
+    noteService.getAll()
       .then(response => {
         setNotes(response.data)
       })
@@ -22,10 +22,22 @@ const App = () => {
     const newObject = {
       content: newNote,
       important: Math.random() < 0.5,
-      id: String(notes.length + 1)
     }
-    setNotes(notes.concat(newObject))
-    setNewNote('')
+    axios.post("http://localhost:3001/notes", newObject)
+      .then(response => {
+        console.log(response)
+        setNotes(notes.concat(newObject))
+        setNewNote('')
+      })
+  }
+
+  const toggle = (id) => {
+    const note = notes.find(note => note.id === id)
+    const cNote = { ...note, important: !note.important }
+
+    noteService.update(id, cNote).then(response => {
+      setNotes(notes.map(note => note.id === id ? response.data : note))
+    })
   }
 
   const notesToShow = showAll
@@ -47,7 +59,7 @@ const App = () => {
       </div>
       <ul>
         {notesToShow.map((note) => (
-          <Note key={note.id} note={note} />
+          <Note key={note.id} note={note} toggle={() => toggle(note.id)} />
         ))}
       </ul>
       <form onSubmit={addNote}>
