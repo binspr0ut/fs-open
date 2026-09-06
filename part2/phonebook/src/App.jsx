@@ -2,6 +2,30 @@ import { useEffect, useState } from 'react'
 import axios from 'axios'
 import phonebook from './services/phonebook'
 
+const Notification = ({ message }) => {
+  if (message == null)
+    return null
+
+  return (
+    <div className='success'>
+      {message}
+    </div>
+  )
+
+}
+
+const Error = ({ message }) => {
+  if (message == null)
+    return null
+
+  return (
+    <div className='error'>
+      {message}
+    </div>
+  )
+
+}
+
 const Filter = ({ filter, filterPerson }) => {
   return (<div>
     filter: <input value={filter} onChange={filterPerson} />
@@ -41,6 +65,9 @@ const App = () => {
   const [filtered, setFiltered] = useState(persons)
   const [filter, setFilter] = useState('')
 
+  const [errorMessage, setErrorMessage] = useState(null)
+  const [sucessMessage, setSuccessMessage] = useState(null)
+
   useEffect(() => {
     phonebook.getAll().then(
       response => {
@@ -54,7 +81,8 @@ const App = () => {
     event.preventDefault()
     const newB = { name: newName, number: newNumber, id: persons.length + 1 }
     const find = persons.find(person => person.name === newName)
-    if (find !== '') {
+    console.log(find)
+    if (find !== undefined) {
       if (window.confirm(`Replace ${find.name}?`)) {
         const newB = { name: newName, number: newNumber, id: find.id }
         phonebook.update(newB, find.id).then(response => {
@@ -62,16 +90,32 @@ const App = () => {
           setFiltered(filtered.map(person => person.id === find.id ? response.data : person))
           setNewName('')
           setNewNumber('')
-        })
+          setSuccessMessage(`'${newB.name}' updated`)
+          setTimeout(() => {
+            setSuccessMessage(null)
+          }, 5000)
+        }).catch(error => {
+          setErrorMessage(`${error}.    ${newB.name} deleted`)
+          setTimeout(() => {
+            setErrorMessage(null)
+          }, 5000)
+        }
+        )
       }
     } else {
-      phonebook.create(newB).then(response => {
-        setPersons([...persons, response.data])
-        setFiltered([...filtered, response.data])
-        setNewName('')
-        setNewNumber('')
-      }
-      )
+      phonebook.create(newB)
+        .then(response => {
+          setPersons([...persons, response.data])
+          setFiltered([...filtered, response.data])
+          setNewName('')
+          setNewNumber('')
+
+          setSuccessMessage(`'${newB.name}' added`)
+          setTimeout(() => {
+            setSuccessMessage(null)
+          }, 5000)
+        }
+        )
     }
   }
 
@@ -104,6 +148,8 @@ const App = () => {
   return (
     <div>
       <h2>Phonebook</h2>
+      <Error message={errorMessage}></Error>
+      <Notification message={sucessMessage}></Notification>
       <Filter filter={filter} filterPerson={filterPerson}></Filter>
       <h3>add a new</h3>
       <PersonForm addPerson={addPerson} newName={newName} addNewName={addNewName} newNumber={newNumber} addNewNumber={addNewNumber}></PersonForm>
